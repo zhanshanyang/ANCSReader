@@ -1,5 +1,6 @@
 package com.jiesean.readancs;
 
+import android.Manifest;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -9,10 +10,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -28,15 +31,21 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.jiesean.readancs.dataprocess.Notification;
+import com.jiesean.readancs.utils.PermissionUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends Activity {
-
     //log TAG
-    private static final String TAG = Constants.AUTHOR + "MainActivity";
+    private static final String TAG = "MainActivity";
+
+    private static final int REQUEST_PERMISSION_CODE = 1;
+    private String[] permissions = new String[]{
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+    };
 
     HashMap<Integer, byte[]> mDataMap = new HashMap<>();
 
@@ -71,11 +80,35 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.layout_main);
+        checkPermissions();
         initView();
         //开启蓝牙连接的服务
         Intent serviceIntent = new Intent(MainActivity.this, LeService.class);
         bindService(serviceIntent, conn, Context.BIND_AUTO_CREATE);
+    }
 
+    private void checkPermissions() {
+        PermissionUtils.requestPermission(this, permissions, REQUEST_PERMISSION_CODE);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_PERMISSION_CODE) {
+           for (int i=0; i < grantResults.length; i++) {
+               if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                   //判断下次是否可以再次弹窗提示：true可以再次提示，false不会再次提示（因为勾选了不再提示）
+                   boolean showRequest = ActivityCompat.shouldShowRequestPermissionRationale(this, permissions[i]);
+                   Log.i(TAG, "权限未申请，Permission:" + permissions[i] + ",是否勾选禁止：" + showRequest);
+               }
+           }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unbindService(conn);
     }
 
     @Override
@@ -107,39 +140,6 @@ public class MainActivity extends Activity {
         LinearLayoutManager mLinearLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLinearLayoutManager);
         // 设置ItemAnimator
-        RecyclerView.ItemAnimator itemAnimator = new RecyclerView.ItemAnimator() {
-            @Override
-            public boolean animateDisappearance(@NonNull RecyclerView.ViewHolder viewHolder, @NonNull ItemHolderInfo preLayoutInfo, @Nullable ItemHolderInfo postLayoutInfo) {
-                return false;
-            }
-            @Override
-            public boolean animateAppearance(@NonNull RecyclerView.ViewHolder viewHolder, @Nullable ItemHolderInfo preLayoutInfo, @NonNull ItemHolderInfo postLayoutInfo) {
-                return false;
-            }
-            @Override
-            public boolean animatePersistence(@NonNull RecyclerView.ViewHolder viewHolder, @NonNull ItemHolderInfo preLayoutInfo, @NonNull ItemHolderInfo postLayoutInfo) {
-                return false;
-            }
-            @Override
-            public boolean animateChange(@NonNull RecyclerView.ViewHolder oldHolder, @NonNull RecyclerView.ViewHolder newHolder, @NonNull ItemHolderInfo preLayoutInfo, @NonNull ItemHolderInfo postLayoutInfo) {
-                return false;
-            }
-            @Override
-            public void runPendingAnimations() {
-
-            }
-            @Override
-            public void endAnimation(RecyclerView.ViewHolder item) {
-            }
-            @Override
-            public void endAnimations() {
-            }
-
-            @Override
-            public boolean isRunning() {
-                return false;
-            }
-        };
         mRecyclerView.setItemAnimator(new DefaultItemAnimator());
         // 设置固定大小
         mRecyclerView.setHasFixedSize(true);
@@ -298,7 +298,7 @@ public class MainActivity extends Activity {
         public void onClick(View view) {
             switch (view.getId()) {
                 case R.id.connect_gatt_btn:
-                    Toast.makeText(MainActivity.this,"start scan",Toast.LENGTH_SHORT);
+                    Toast.makeText(MainActivity.this,"start scan",Toast.LENGTH_SHORT).show();
                     mService.startLeScan();
                     break;
             }

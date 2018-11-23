@@ -251,7 +251,7 @@ public class LeService extends Service {
                 //已经绑定，该设备在绑定的设备名单里面
                 if (mBluetoothAdapter.getBondedDevices().contains(device)) {
 
-                    device.connectGatt(getApplicationContext(), false, mGattCallback);
+                    device.connectGatt(getApplicationContext(), true, mGattCallback);
                     mBluetoothLeScanner.stopScan(mScanCallback);
                 } else {//未绑定的设备
                     device.createBond();
